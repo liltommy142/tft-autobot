@@ -1,18 +1,18 @@
 # TFT Auto-bot / Rank Assistant
 
-Tool hỗ trợ quyết định đội hình (comp), econ (kinh tế), và item trong TFT (Teamfight Tactics).
+A tool to support decision-making for compositions (comp), economy (econ), and items in TFT (Teamfight Tactics).
 
-Được thiết kế với kiến trúc modular: tách logic ra khỏi data meta, giúp dễ dàng cập nhật meta độc lập.
+Designed with a modular architecture: separating logic from metadata, allowing for easy and independent meta updates.
 
-## 🎯 Tính năng
+## 🎯 Features
 
-- **Gợi ý comp**: Dựa trên game state (level, gold, units hiện có) và meta score
-- **Lời khuyên econ**: ROLL / LEVEL / SAVE dựa trên HP và vàng
-- **Gợi ý item**: Gợi ý trang bị cho core unit của comp chọn
-- **Lưu log game**: Ghi lại mỗi game vào JSONL format để phân tích
-- **Fetch từ Riot API**: Tự động lấy match data từ Riot API (với PowerShell scheduler)
+- **Comp Suggestions**: Based on game state (level, gold, existing units) and meta score.
+- **Econ Advice**: ROLL / LEVEL / SAVE recommendations based on HP and gold.
+- **Item Suggestions**: Recommended equipment for core units of the selected comp.
+- **Game Logging**: Records each game in JSONL format for later analysis.
+- **Riot API Fetching**: Automatically retrieve match data from Riot API (with PowerShell scheduler).
 
-## 🏗️ Cấu trúc Project
+## 🏗️ Project Structure
 
 ```
 tft-autobot/
@@ -271,4 +271,3 @@ MIT
 ## 👤 Author
 
 Created for TFT players muốn optimize decision-making in game.
-

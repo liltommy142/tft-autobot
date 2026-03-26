@@ -3,9 +3,25 @@ config.py - Tập trung tất cả constants & configuration
 """
 import os
 
+def load_dotenv(root_dir: str):
+    """Minimal .env loader to avoid extra dependencies."""
+    dotenv_path = os.path.join(root_dir, ".env")
+    if os.path.exists(dotenv_path):
+        with open(dotenv_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                os.environ[key.strip()] = value.strip().strip('"').strip("'")
+
 # ============ Directories ============
 # Get repo root (parent of src/)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Load environment variables early
+load_dotenv(ROOT_DIR)
+
 DATA_DIR = os.path.join(ROOT_DIR, "data")
 META_DIR = os.path.join(DATA_DIR, "meta")
 LOGS_DIR = os.path.join(ROOT_DIR, "logs")

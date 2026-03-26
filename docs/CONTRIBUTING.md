@@ -2,7 +2,7 @@
 CONTRIBUTING.md - Hướng dẫn đóng góp cho project
 """
 
-# Contribu Hướng Dẫn
+# Contribution Guide
 
 Cảm ơn bạn muốn đóng góp cho TFT Auto-bot! Dưới đây là hướng dẫn.
 

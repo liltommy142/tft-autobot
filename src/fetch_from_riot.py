@@ -22,50 +22,18 @@ from typing import Optional, List, Dict, Any
 
 import requests
 
-from config import LOGS_DIR, RATE_LIMIT_DELAY, API_TIMEOUT, MAX_RETRIES, MAX_RECENT_MATCHES
+from config import (
+    LOG_FILE, LOGS_DIR, RATE_LIMIT_DELAY, API_TIMEOUT, 
+    MAX_RETRIES, MAX_RECENT_MATCHES, RIOT_API_KEY
+)
 
 # Ensure logs directory exists
 os.makedirs(LOGS_DIR, exist_ok=True)
-OUT_FILE = os.path.join(LOGS_DIR, "games.jsonl")
 
-# --- .env loader (simple, no dependency) ---
+if not RIOT_API_KEY:
+    sys.exit("RIOT_API_KEY not set in .env or environment variables.")
 
-
-def load_dotenv(path: str) -> None:
-    """Load environment variables from .env file.
-    
-    Args:
-        path: Path to .env file
-    """
-    if not os.path.exists(path):
-        return
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" not in line:
-                    continue
-                k, v = line.split("=", 1)
-                k = k.strip()
-                v = v.strip().strip('"').strip("'")
-                if k and v and k not in os.environ:
-                    os.environ[k] = v
-    except Exception as e:
-        print(f"Warning: Failed to load .env from {path}: {e}")
-
-
-# Load .env from repo root
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
-
-API_KEY = os.getenv("RIOT_API_KEY")
-if not API_KEY:
-    raise SystemExit(
-        "RIOT_API_KEY not set. Create a .env file or export RIOT_API_KEY env var before running."
-    )
-
-HEADERS = {"X-Riot-Token": API_KEY, "User-Agent": "tft-autobot/1.0"}
+HEADERS = {"X-Riot-Token": RIOT_API_KEY, "User-Agent": "tft-autobot/1.0"}
 
 # Platform lists to try for auto-detect (common platforms)
 PLATFORMS_TRY = [
@@ -263,10 +231,10 @@ def append_logs(entries: List[Dict[str, Any]]) -> None:
     if not entries:
         return
     try:
-        with open(OUT_FILE, "a", encoding="utf-8") as f:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
             for e in entries:
                 f.write(json.dumps(e, ensure_ascii=False) + "\n")
-        print(f"✓ Appended {len(entries)} matches to {OUT_FILE}")
+        print(f"✓ Appended {len(entries)} matches to {LOG_FILE}")
     except IOError as e:
         print(f"✗ Failed to write matches: {e}")
 

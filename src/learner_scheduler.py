@@ -15,10 +15,11 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# Setup logging
-log_dir = Path(__file__).parent / "logs"
-log_dir.mkdir(exist_ok=True)
+from config import LOGS_DIR
 
+# Setup logging
+log_dir = Path(LOGS_DIR)
+log_dir.mkdir(exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",

@@ -155,18 +155,18 @@ def econ_advice(gs: GameState, target_comp: Optional[Dict[str, Any]]) -> Dict[st
     if gs.hp <= LOW_HP_THRESHOLD:
         return {
             "action": ROLL_ACTION,
-            "reason": f"Máu thấp (<={LOW_HP_THRESHOLD}), cần ổn định board nhanh bằng cách roll tìm 2 sao.",
+            "reason": f"Low HP (<= {LOW_HP_THRESHOLD}). You need to stabilize your board immediately by rolling for 2-star units.",
         }
 
     if gs.gold >= HIGH_GOLD_THRESHOLD and gs.level < MIN_LEVEL_TO_LEVEL_UP:
         return {
             "action": LEVEL_ACTION,
-            "reason": f"Kinh tế tốt (>={HIGH_GOLD_THRESHOLD} vàng), ưu tiên lên cấp để tăng tỉ lệ tướng cao cost.",
+            "reason": f"Strong economy (>= {HIGH_GOLD_THRESHOLD} gold). Prioritize leveling up to increase odds of finding high-cost units.",
         }
 
     return {
         "action": SAVE_ACTION,
-        "reason": "Không quá yếu cũng không quá khỏe, giữ vàng để linh hoạt (có thể up cấp hoặc roll sau).",
+        "reason": "Stable condition. Save gold to maintain flexibility for future leveling or rolling.",
     }
 
 
