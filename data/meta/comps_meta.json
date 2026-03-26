@@ -1,0 +1,40 @@
+[
+  {
+    "name": "AP Carry Ahri",
+    "core_units": [
+      "Ahri",
+      "Annie",
+      "Lulu"
+    ],
+    "optional_units": [
+      "Janna",
+      "Sona",
+      "Syndra"
+    ],
+    "ideal_level": 8,
+    "tags": [
+      "fast8",
+      "ap"
+    ],
+    "meta_score": 5
+  },
+  {
+    "name": "Bruiser Reroll Yasuo",
+    "core_units": [
+      "Yasuo",
+      "Illaoi",
+      "Vi"
+    ],
+    "optional_units": [
+      "LeeSin",
+      "Sett",
+      "Garen"
+    ],
+    "ideal_level": 7,
+    "tags": [
+      "reroll",
+      "frontline"
+    ],
+    "meta_score": 3
+  }
+]

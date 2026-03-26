@@ -4,7 +4,8 @@ config.py - Tập trung tất cả constants & configuration
 import os
 
 # ============ Directories ============
-ROOT_DIR = os.path.dirname(__file__)
+# Get repo root (parent of src/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT_DIR, "data")
 META_DIR = os.path.join(DATA_DIR, "meta")
 LOGS_DIR = os.path.join(ROOT_DIR, "logs")
@@ -68,3 +69,7 @@ AUTO_UPDATE_ON_PATCH = True          # Auto-analyze when patch updates
 # Learning scheduler
 SCHEDULER_CHECK_INTERVAL = 60        # Seconds between scheduler checks
 SCHEDULER_ENABLED = True             # Enable background meta learning
+
+# ============ API Credentials ============
+# Load from environment or .env file
+RIOT_API_KEY = os.getenv("RIOT_API_KEY", "")

@@ -66,6 +66,3 @@ logs/*.jsonl
 # Logs
 logs/
 *.log
-
-# Data (local/temporary)
-data/meta/*.json

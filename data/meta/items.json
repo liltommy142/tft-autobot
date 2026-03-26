@@ -1,0 +1,33 @@
+[
+  {
+    "name": "Rabadon's Deathcap",
+    "best_users": [
+      "Ahri",
+      "Syndra"
+    ],
+    "note": "Tăng sát thương phép cho carry AP."
+  },
+  {
+    "name": "Jeweled Gauntlet",
+    "best_users": [
+      "Ahri",
+      "Lulu"
+    ],
+    "note": "Cho phép kỹ năng chí mạng, rất tốt cho AP carry."
+  },
+  {
+    "name": "Titan's Resolve",
+    "best_users": [
+      "Yasuo",
+      "Vi"
+    ],
+    "note": "Hợp với đấu sĩ/đấu sĩ reroll gây nhiều đòn đánh."
+  },
+  {
+    "name": "Bloodthirster",
+    "best_users": [
+      "Yasuo"
+    ],
+    "note": "Hút máu cho Yasuo frontline carry."
+  }
+]
