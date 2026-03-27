@@ -17,30 +17,13 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import requests
 
-from config import META_DIR, RATE_LIMIT_DELAY, API_TIMEOUT, MAX_RETRIES
+from config import (
+    META_DIR, RATE_LIMIT_DELAY, API_TIMEOUT, MAX_RETRIES, 
+    RIOT_API_KEY, LEARNING_PLATFORM
+)
 from logger import read_logs
 
-
-# Load API key
-def load_api_key() -> str:
-    """Load Riot API key from .env or environment."""
-    api_key = os.getenv("RIOT_API_KEY")
-    if not api_key:
-        # Try loading from .env
-        env_path = os.path.join(os.path.dirname(__file__), ".env")
-        if os.path.exists(env_path):
-            with open(env_path, "r") as f:
-                for line in f:
-                    if line.startswith("RIOT_API_KEY="):
-                        api_key = line.split("=", 1)[1].strip().strip("'\"")
-                        break
-    if not api_key:
-        raise RuntimeError("RIOT_API_KEY not found. Set it in .env or environment.")
-    return api_key
-
-
-API_KEY = load_api_key()
-HEADERS = {"X-Riot-Token": API_KEY, "User-Agent": "tft-autobot/1.0"}
+HEADERS = {"X-Riot-Token": RIOT_API_KEY, "User-Agent": "tft-autobot/1.0"}
 
 
 class MetaPatcher:
@@ -49,7 +32,7 @@ class MetaPatcher:
     PATCH_INFO_FILE = os.path.join(META_DIR, "patch_info.json")
     
     @classmethod
-    def get_current_patch(cls, platform: str = "na1") -> str:
+    def get_current_patch(cls, platform: str = LEARNING_PLATFORM) -> str:
         """Get current patch from TFT-STATUS-V1 API.
         
         Args:
@@ -115,14 +98,14 @@ class MetaPatcher:
 class HighEloMatcher:
     """Fetch and analyze matches from high-level players (Challenger/Grandmaster)."""
     
-    PLATFORM_TO_REGION = {
-        "na1": "americas",
-        "euw1": "europe",
-        "kr": "asia",
-        "vn1": "asia",
+    PLATFORM_TO_REGION: Dict[str, str] = {
+        "na1": "americas", "br1": "americas", "la1": "americas", "la2": "americas", "oc1": "americas",
+        "euw1": "europe", "eun1": "europe", "tr1": "europe", "ru": "europe",
+        "kr": "asia", "jp1": "asia", 
+        "vn2": "sea", "sg2": "sea", "ph2": "sea", "th2": "sea", "tw2": "sea"
     }
     
-    def __init__(self, platform: str = "na1"):
+    def __init__(self, platform: str = LEARNING_PLATFORM):
         """Initialize matcher.
         
         Args:
@@ -173,6 +156,25 @@ class HighEloMatcher:
         except Exception as e:
             print(f"  ✗ Failed to get challenger players: {e}")
             return []
+
+    def get_puuid_by_summoner_id(self, summoner_id: str) -> Optional[str]:
+        """Resolve PUUID from summonerId using TFT-SUMMONER-V1.
+        
+        Args:
+            summoner_id: Encrypted summoner ID
+            
+        Returns:
+            PUUID string or None
+        """
+        try:
+            time.sleep(RATE_LIMIT_DELAY)
+            url = f"https://{self.platform}.api.riotgames.com/tft/summoner/v1/summoners/{summoner_id}"
+            r = requests.get(url, headers=HEADERS, timeout=API_TIMEOUT)
+            r.raise_for_status()
+            return r.json().get("puuid")
+        except Exception as e:
+            print(f"  ✗ Failed to get PUUID for {summoner_id}: {e}")
+            return None
     
     def get_recent_matches(self, puuid: str, count: int = 10) -> List[str]:
         """Get recent match IDs for a player.
@@ -285,7 +287,7 @@ class MetaAnalyzer:
 class MetaLearner:
     """Main meta learning system."""
     
-    def __init__(self, platform: str = "na1"):
+    def __init__(self, platform: str = LEARNING_PLATFORM):
         """Initialize learner.
         
         Args:
@@ -322,12 +324,17 @@ class MetaLearner:
         comps_found = 0
         
         for i, player in enumerate(players, 1):
-            puuid = player.get("summonerId")  # Note: TFT API uses summonerId
-            if not puuid:
+            summoner_id = player.get("summonerId")
+            if not summoner_id:
                 continue
             
             print(f"\n  Player {i}/{len(players)}: {player.get('summonerName', 'Unknown')}")
             
+            # Resolve actual PUUID required for match history API
+            puuid = self.matcher.get_puuid_by_summoner_id(summoner_id)
+            if not puuid:
+                continue
+
             # Get recent matches
             match_ids = self.matcher.get_recent_matches(puuid, count=matches_per_player)
             if not match_ids:
@@ -473,7 +480,7 @@ def main() -> None:
         
         # Learn meta
         print("\n2️⃣ Learning from high-level players (Grandmaster)...")
-        learner = MetaLearner(platform="na1")
+        learner = MetaLearner(platform=LEARNING_PLATFORM)
         learner.learn_from_matches(matches_per_player=5, num_players=20)
         
         # Update database

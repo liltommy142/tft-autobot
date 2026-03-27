@@ -1,2 +1,8 @@
 requests
 beautifulsoup4
+PyQt5
+easyocr
+pillow
+opencv-python
+pyautogui
+pynput

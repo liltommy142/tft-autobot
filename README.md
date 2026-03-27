@@ -10,7 +10,24 @@ Designed with a modular architecture: separating logic from metadata, allowing f
 - **Econ Advice**: ROLL / LEVEL / SAVE recommendations based on HP and gold.
 - **Item Suggestions**: Recommended equipment for core units of the selected comp.
 - **Game Logging**: Records each game in JSONL format for later analysis.
-- **Riot API Fetching**: Automatically retrieve match data from Riot API (with PowerShell scheduler).
+- **Auto OCR Detection**: Automatically detect game state from TFT screen using computer vision
+- **Debug Overlay**: Visual overlay showing OCR scan regions for calibration
+- **Region Calibration**: Click-to-calibrate OCR regions with mouse listener
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.8+
+- Riot API key (for learning features)
+
+### Installation
+```bash
+pip install -r requirements.txt
+```
+
+### Usage
+- **CLI**: `python main.py` or `tft-autobot` (after pip install)
+- **GUI**: `python gui.py` or `tft-gui` (after pip install - PyQt5 interface)
 
 ## 🏗️ Project Structure
 
@@ -23,6 +40,7 @@ tft-autobot/
 │   ├── core_models.py            # Data models: GameState, UnitInstance
 │   ├── core_engine.py            # Logic: recommend_comps, econ_advice
 │   ├── cli_main.py               # CLI interface
+│   ├── gui_main.py               # GUI interface
 │   ├── tft_assistant.py          # Alternative interface
 │   ├── update_meta.py            # Create/update metadata
 │   ├── fetch_meta.py             # Fetch meta từ online sources
@@ -120,7 +138,8 @@ Cần Riot API key: https://developer.riotgames.com/
 
 ```bash
 # Setup .env
-echo "RIOT_API_KEY=your-api-key-here" > .env
+cp .env.example .env
+# Edit .env with your Riot API key
 
 # Fetch 15 games gần nhất
 python fetch_from_riot.py "YourSummonerName" vn1

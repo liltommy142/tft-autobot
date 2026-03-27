@@ -1,304 +1,174 @@
 """
-fetch_from_riot.py - Fetch TFT match data from Riot API
-
-Fetches recent matches for a summoner and appends to logs/games.jsonl
+fetch_from_riot.py - Fetch TFT match data from Riot API using Riot ID
 
 Usage:
-  python fetch_from_riot.py SUMMONER_NAME [PLATFORM]
-
-Requirements:
-  - RIOT_API_KEY environment variable or .env file
-  - Python requests library
-
-Notes:
-  - Respects Riot API rate limits (429 handling)
-  - Supports 12 common platforms with auto-detection
+  python fetch_from_riot.py "Name#Tag" [PLATFORM]
+  Ví dụ: python fetch_from_riot.py "Anh Hai#0142" vn1
 """
 import os
 import sys
 import time
 import json
+import urllib.parse
 from typing import Optional, List, Dict, Any
-
 import requests
 
-from config import (
-    LOG_FILE, LOGS_DIR, RATE_LIMIT_DELAY, API_TIMEOUT, 
-    MAX_RETRIES, MAX_RECENT_MATCHES, RIOT_API_KEY
-)
+# Load configuration
+try:
+    from config import (
+        LOG_FILE, LOGS_DIR, RATE_LIMIT_DELAY, API_TIMEOUT,
+        MAX_RETRIES, MAX_RECENT_MATCHES, RIOT_API_KEY
+    )
+except ImportError:
+    LOG_FILE, LOGS_DIR = "logs/games.jsonl", "logs"
+    RATE_LIMIT_DELAY, API_TIMEOUT = 1.2, 10
+    MAX_RETRIES, MAX_RECENT_MATCHES = 3, 10
+    RIOT_API_KEY = os.getenv("RIOT_API_KEY")
 
-# Ensure logs directory exists
 os.makedirs(LOGS_DIR, exist_ok=True)
 
 if not RIOT_API_KEY:
-    sys.exit("RIOT_API_KEY not set in .env or environment variables.")
+    sys.exit("Error: RIOT_API_KEY is missing. Check your .env file.")
 
 HEADERS = {"X-Riot-Token": RIOT_API_KEY, "User-Agent": "tft-autobot/1.0"}
 
-# Platform lists to try for auto-detect (common platforms)
-PLATFORMS_TRY = [
-    "vn1", "na1", "euw1", "eun1", "kr", "jp1", "oc1", "br1", "la1", "la2", "tr1", "ru"
-]
-
-# Minimal platform -> regional mapping for match endpoints
 PLATFORM_TO_REGION: Dict[str, str] = {
-    # Americas
-    "na1": "americas",
-    "br1": "americas",
-    "la1": "americas",
-    "la2": "americas",
-    "oc1": "americas",
-    # Europe
-    "euw1": "europe",
-    "eun1": "europe",
-    "tr1": "europe",
-    "ru": "europe",
-    # Asia
-    "kr": "asia",
-    "jp1": "asia",
-    "vn1": "asia",
-    "sg1": "asia",
-    "ph2": "asia",
+    "na1": "americas", "br1": "americas", "la1": "americas", "la2": "americas", "oc1": "americas",
+    "euw1": "europe", "eun1": "europe", "tr1": "europe", "ru": "europe",
+    "kr": "asia", "jp1": "asia", 
+    "vn1": "sea", "sg1": "sea", "ph2": "sea", "th2": "sea", "tw2": "sea"
 }
 
 
-def riot_get(url: str, params: Optional[Dict[str, Any]] = None, max_retries: int = MAX_RETRIES) -> Dict[str, Any]:
-    """Make GET request to Riot API with rate limit handling.
-    
-    Args:
-        url: API endpoint URL
-        params: Query parameters
-        max_retries: Maximum retry attempts
-        
-    Returns:
-        JSON response data
-        
-    Raises:
-        SystemExit: On persistent failure
-    """
-    for attempt in range(max_retries):
+def riot_get(url: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    """Helper to handle requests and rate limiting."""
+    for attempt in range(MAX_RETRIES):
         try:
-            r = requests.get(url, headers=HEADERS, params=params, timeout=API_TIMEOUT)
-        except requests.RequestException as e:
-            if attempt == max_retries - 1:
-                raise SystemExit(f"Failed to GET {url}: {e}")
-            time.sleep(1 + attempt)
-            continue
-        
-        # Handle rate limiting
-        if r.status_code == 429:
-            retry_after = int(r.headers.get("Retry-After", "1"))
-            print(f"  Rate limited, waiting {retry_after}s...")
-            time.sleep(retry_after + 0.5)
-            continue
-        
-        # Handle server errors
-        if r.status_code >= 500:
-            if attempt == max_retries - 1:
-                raise SystemExit(f"Server error: {r.status_code}")
-            time.sleep(1 + attempt)
-            continue
-        
-        # Success or client error
-        try:
+            r = requests.get(url, headers=HEADERS,
+                             params=params, timeout=API_TIMEOUT)
+
+            if r.status_code == 429:
+                wait = int(r.headers.get("Retry-After", 2))
+                print(f"  Rate limited (429), waiting {wait}s...")
+                time.sleep(wait + 0.5)
+                continue
+
+            if r.status_code == 404:
+                return {}
+
+            if r.status_code == 403:
+                print(f"  Forbidden (403): Your API Key does not have access to {url}")
+                return {}
+
             r.raise_for_status()
             return r.json()
-        except requests.HTTPError as e:
-            if e.response.status_code in (404, 403):
-                return {}  # Not found/forbidden
-            raise SystemExit(f"HTTP {r.status_code}: {url}")
-    
-    raise SystemExit(f"Failed to GET {url} after {max_retries} attempts")
-
-
-def get_summoner_by_name(platform: str, name: str) -> Dict[str, Any]:
-    """Fetch summoner info by name.
-    
-    Args:
-        platform: Platform code (e.g., 'vn1','na1')
-        name: Summoner name
-        
-    Returns:
-        Summoner data dict
-    """
-    url = f"https://{platform}.api.riotgames.com/tft/summoner/v1/summoners/by-name/{name}"
-    return riot_get(url)
-
-
-def try_autodetect_platform(name: str, platforms: List[str]) -> Optional[str]:
-    """Auto-detect platform by trying multiple platforms.
-    
-    Args:
-        name: Summoner name
-        platforms: List of platforms to try
-        
-    Returns:
-        Platform code if found, None if not found on any platform
-    """
-    for p in platforms:
-        try:
-            resp = get_summoner_by_name(p, name)
-            if resp and resp.get("puuid"):
-                print(f"✓ Auto-detected platform: {p}")
-                return p
-        except SystemExit:
-            # Skip non-existent summoner
-            continue
         except Exception as e:
-            print(f"  Warning: Error checking platform {p}: {e}")
-            continue
-    return None
+            if attempt == MAX_RETRIES - 1:
+                print(f"Error calling {url}: {e}")
+                return {}
+            time.sleep(1.5)
+    return {}
+
+
+def get_puuid_by_riot_id(region: str, game_name: str, tag_line: str) -> Optional[str]:
+    """Retrieve PUUID from Riot ID using Account-V1 API."""
+    safe_name = urllib.parse.quote(game_name)
+    safe_tag = urllib.parse.quote(tag_line)
+
+    # Account-V1 on 'sea' cluster often returns 403 for development keys.
+    # Using 'asia' cluster as a global gateway to resolve PUUID for SEA players.
+    account_region = "asia" if region == "sea" else region
+    
+    url = f"https://{account_region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{safe_name}/{safe_tag}"
+
+    resp = riot_get(url)
+    return resp.get("puuid")
+
 
 
 def get_recent_match_ids(region: str, puuid: str, count: int = MAX_RECENT_MATCHES) -> List[str]:
-    """Fetch recent match IDs for a player.
-    
-    Args:
-        region: Regional cluster (e.g., 'americas', 'europe', 'asia')
-        puuid: Player UUID
-        count: Number of matches to fetch
-        
-    Returns:
-        List of match IDs
-    """
     url = f"https://{region}.api.riotgames.com/tft/match/v1/matches/by-puuid/{puuid}/ids"
-    return riot_get(url, params={"start": 0, "count": count})
+    return riot_get(url, params={"start": 0, "count": count}) or []
 
 
 def get_match(region: str, match_id: str) -> Dict[str, Any]:
-    """Fetch match data.
-    
-    Args:
-        region: Regional cluster
-        match_id: Match ID
-        
-    Returns:
-        Match data dict
-    """
     url = f"https://{region}.api.riotgames.com/tft/match/v1/matches/{match_id}"
     return riot_get(url)
 
 
 def summarize_match_for_puuid(match: Dict[str, Any], puuid: str) -> Optional[Dict[str, Any]]:
-    """Extract player's match summary from full match data.
-    
-    Args:
-        match: Full match data
-        puuid: Player PUUID
-        
-    Returns:
-        Summarized match dict or None if player not found
-    """
+    if not match or "info" not in match:
+        return None
     try:
         info = match.get("info", {})
-        participants = info.get("participants", [])
-        me = next((p for p in participants if p.get("puuid") == puuid), None)
+        me = next((p for p in info.get("participants", [])
+                  if p.get("puuid") == puuid), None)
         if not me:
             return None
-        
-        placement = me.get("placement")
-        units = me.get("units", [])
+
+        # Extract unit list (remove TFT13_ prefix)
         final_board = []
-        items: Dict[str, List[str]] = {}
-        
-        for u in units:
-            cid = u.get("character_id") or ""
-            name = cid.split("_", 1)[1] if "_" in cid else cid
-            star = u.get("tier", 1) or 1
-            final_board.append(f"{name}{star}")
-            champ_items = u.get("itemNames") or []
-            items[name] = champ_items
+        for u in me.get("units", []):
+            char_id = u['character_id']
+            name = char_id.split('_')[-1] if '_' in char_id else char_id
+            final_board.append(f"{name}{u['tier']}")
 
         return {
-            "patch": info.get("game_variation") or "unknown",
-            "placement": placement,
-            "comp_name": None,
+            "patch": info.get("game_version", "unknown"),
+            "placement": me.get("placement"),
             "final_board": final_board,
-            "items": items,
             "timestamp": info.get("game_datetime")
         }
     except Exception as e:
-        print(f"  Warning: Failed to summarize match: {e}")
+        print(f"Summarize error: {e}")
         return None
 
 
-def append_logs(entries: List[Dict[str, Any]]) -> None:
-    """Append match entries to JSONL log file.
-    
-    Args:
-        entries: List of match summary dicts
-    """
-    if not entries:
-        return
-    try:
-        with open(LOG_FILE, "a", encoding="utf-8") as f:
-            for e in entries:
-                f.write(json.dumps(e, ensure_ascii=False) + "\n")
-        print(f"✓ Appended {len(entries)} matches to {LOG_FILE}")
-    except IOError as e:
-        print(f"✗ Failed to write matches: {e}")
-
-
-def main() -> None:
-    """Main entry point."""
+def main():
     if len(sys.argv) < 2:
-        print("Usage: python fetch_from_riot.py SUMMONER_NAME [PLATFORM]")
-        sys.exit(1)
-    
-    summoner = sys.argv[1]
-    platform_arg = sys.argv[2] if len(sys.argv) > 2 else os.getenv("PLATFORM")
+        sys.exit("Usage: python fetch_from_riot.py 'Name#Tag' [platform]")
 
-    # Determine platform
-    platform = platform_arg
-    if not platform:
-        print(f"Platform not provided, attempting auto-detect for '{summoner}'...")
-        platform = try_autodetect_platform(summoner, PLATFORMS_TRY)
-        if not platform:
-            sys.exit(f"✗ Could not find '{summoner}' on any platform. Provide PLATFORM in .env or as arg.")
+    riot_id = sys.argv[1]
+    if "#" not in riot_id:
+        sys.exit("Error: Riot ID must be in 'Name#Tag' format (e.g., 'Anh Hai#0142')")
 
+    game_name, tag_line = riot_id.rsplit("#", 1)
+
+    platform = sys.argv[2] if len(sys.argv) > 2 else "vn1"
     region = PLATFORM_TO_REGION.get(platform.lower())
+
     if not region:
-        available = ", ".join(PLATFORM_TO_REGION.keys())
-        sys.exit(f"✗ Unknown platform '{platform}'. Available: {available}")
+        sys.exit(
+            f"Error: Platform '{platform}' not supported. Try: vn1, na1, kr...")
 
-    print(f"Fetching summoner '{summoner}' on {platform} (region {region})")
-    
-    try:
-        summ = get_summoner_by_name(platform, summoner)
-    except SystemExit as e:
-        sys.exit(f"✗ {e}")
-    
-    puuid = summ.get("puuid")
+    print(f"--- Searching for {riot_id} in {region} region ---")
+    puuid = get_puuid_by_riot_id(region, game_name, tag_line)
+
     if not puuid:
-        sys.exit(f"✗ PUUID not found for '{summoner}'")
+        sys.exit(
+            f"Error: PUUID not found for {riot_id}. Check the Name#Tag or region.")
 
-    print(f"✓ Found PUUID: {puuid}")
-    
-    # Fetch recent matches
-    try:
-        ids = get_recent_match_ids(region, puuid, count=MAX_RECENT_MATCHES)
-    except SystemExit as e:
-        sys.exit(f"✗ {e}")
-    
-    print(f"Found {len(ids)} recent matches")
+    match_ids = get_recent_match_ids(region, puuid)
+    if not match_ids:
+        print("No recent matches found.")
+        return
 
-    # Fetch and summarize each match
-    entries = []
-    for mid in ids:
-        time.sleep(RATE_LIMIT_DELAY)
-        try:
-            m = get_match(region, mid)
-            if m:
-                s = summarize_match_for_puuid(m, puuid)
-                if s:
-                    entries.append(s)
-        except SystemExit:
-            continue
-        except Exception as e:
-            print(f"  Warning: Failed to fetch {mid}: {e}")
+    print(f"Found {len(match_ids)} matches. Fetching details...")
 
-    # Write to logs
-    append_logs(entries)
+    new_entries = []
+    for mid in match_ids:
+        print(f" -> Processing match: {mid}")
+        match_data = get_match(region, mid)
+        summary = summarize_match_for_puuid(match_data, puuid)
+        if summary:
+            new_entries.append(summary)
+        time.sleep(RATE_LIMIT_DELAY)  # Avoid rate limit bans
+
+    if new_entries:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            for entry in new_entries:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        print(f"✓ Success! Saved {len(new_entries)} matches to {LOG_FILE}")
 
 
 if __name__ == "__main__":

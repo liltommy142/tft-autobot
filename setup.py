@@ -39,6 +39,7 @@ setup(
     entry_points={
         "console_scripts": [
             "tft-autobot=cli_main:main",
+            "tft-gui=gui_main:main",
             "tft-learn=meta_learner:main",
             "tft-scheduler=learner_scheduler:main",
         ],

@@ -73,22 +73,22 @@ def generate_example_items() -> List[Dict[str, Any]]:
         {
             "name": "Rabadon's Deathcap",
             "best_users": ["Ahri", "Syndra"],
-            "note": "Tăng sát thương phép cho carry AP."
+            "note": "Increases ability power for AP carries."
         },
         {
             "name": "Jeweled Gauntlet",
             "best_users": ["Ahri", "Lulu"],
-            "note": "Cho phép kỹ năng chí mạng, rất tốt cho AP carry."
+            "note": "Allows abilities to critically strike, great for AP carries."
         },
         {
             "name": "Titan's Resolve",
             "best_users": ["Yasuo", "Vi"],
-            "note": "Hợp với đấu sĩ/đấu sĩ reroll gây nhiều đòn đánh."
+            "note": "Ideal for fighters/bruisers who stack attacks."
         },
         {
             "name": "Bloodthirster",
             "best_users": ["Yasuo"],
-            "note": "Hút máu cho Yasuo frontline carry."
+            "note": "Omnivamp for frontline carries like Yasuo."
         }
     ]
 

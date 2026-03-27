@@ -3,17 +3,35 @@ config.py - Tập trung tất cả constants & configuration
 """
 import os
 
-def load_dotenv(root_dir: str):
-    """Minimal .env loader to avoid extra dependencies."""
+def load_dotenv(root_dir: str) -> None:
+    """Robust .env loader handling different encodings (UTF-8, UTF-16)."""
     dotenv_path = os.path.join(root_dir, ".env")
     if os.path.exists(dotenv_path):
-        with open(dotenv_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, value = line.split("=", 1)
-                os.environ[key.strip()] = value.strip().strip('"').strip("'")
+        content = ""
+        # Try different encodings to handle PowerShell's default UTF-16
+        for encoding in ("utf-8-sig", "utf-16", "utf-8"):
+            try:
+                with open(dotenv_path, "r", encoding=encoding) as f:
+                    content = f.read()
+                break
+            except (UnicodeDecodeError, UnicodeError):
+                continue
+        
+        if not content:
+            return
+
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            
+            # Handle inline comments
+            line = line.split("#")[0].strip()
+            if "=" not in line:
+                continue
+                
+            key, value = line.split("=", 1)
+            os.environ[key.strip()] = value.strip().strip('"').strip("'")
 
 # ============ Directories ============
 # Get repo root (parent of src/)
@@ -51,6 +69,7 @@ RATE_LIMIT_DELAY = 0.13  # seconds between Riot API calls
 API_TIMEOUT = 10
 MAX_RETRIES = 3
 MAX_RECENT_MATCHES = 15
+RIOT_API_KEY = os.getenv("RIOT_API_KEY", "")
 
 # ============ Validation ============
 VALID_PLACEMENTS = range(1, 9)  # 1-8
@@ -71,7 +90,7 @@ LEARNING_INTERVAL_HOURS = 6          # How often to analyze grandmaster meta
 MATCHES_PER_PLAYER = 5               # Recent matches to analyze per player
 NUM_HIGH_ELO_PLAYERS = 20            # Number of grandmaster players to analyze
 MIN_COMP_SAMPLES = 3                 # Min matches for comp to be considered
-LEARNING_PLATFORM = "na1"            # Which platform to learn from
+LEARNING_PLATFORM = "vn2"            # Learn meta from the Vietnam region
 
 # Meta score calculation
 WINRATE_WEIGHT = 8.0                 # Contribution of winrate to meta score
@@ -89,3 +108,4 @@ SCHEDULER_ENABLED = True             # Enable background meta learning
 # ============ API Credentials ============
 # Load from environment or .env file
 RIOT_API_KEY = os.getenv("RIOT_API_KEY", "")
+PLATFORM = os.getenv("PLATFORM", "vn2")

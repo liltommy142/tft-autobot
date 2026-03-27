@@ -13,12 +13,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from meta_learner import MetaLearner
-from config import RIOT_API_KEY
+from config import RIOT_API_KEY, LEARNING_PLATFORM
 
 if __name__ == "__main__":
     if not RIOT_API_KEY:
-        print("ERROR: RIOT_API_KEY not set in .env file")
+        print("Error: RIOT_API_KEY not set. Please create a .env file from .env.example "
+              "and add your Riot API key.")
         sys.exit(1)
     
-    learner = MetaLearner(RIOT_API_KEY)
+    learner = MetaLearner(platform=LEARNING_PLATFORM)
     learner.learn_from_matches()

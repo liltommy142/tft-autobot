@@ -27,7 +27,7 @@ if __name__ == "__main__":
     interval = int(sys.argv[2]) if len(sys.argv) > 2 else 6
     check_interval = int(sys.argv[3]) if len(sys.argv) > 3 else 60
     
-    scheduler = LearnerScheduler(RIOT_API_KEY, interval_hours=interval)
+    scheduler = LearnerScheduler(interval_hours=interval)
     
     if mode == "once":
         scheduler.run_learning()

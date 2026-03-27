@@ -15,7 +15,7 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from config import LOGS_DIR
+from config import LOGS_DIR, LEARNING_PLATFORM
 
 # Setup logging
 log_dir = Path(LOGS_DIR)
@@ -97,7 +97,7 @@ class LearnerScheduler:
             
             # Run learner
             logger.info("Starting meta learner...")
-            learner = MetaLearner(platform="na1")
+            learner = MetaLearner(platform=LEARNING_PLATFORM)
             learner.learn_from_matches(matches_per_player=5, num_players=20)
             learner.update_meta_database()
             
